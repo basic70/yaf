@@ -326,6 +326,14 @@ EOD;
         return "<a href='movie.php?id=" . $movie->id . "'>" . $movie->title . "</a>";
     }
 
+    public function get_movie_image_link($movie)
+    {
+        $html = "<a href='movie.php?id=" . $movie->id . "'>";
+        $html .= $this->build_image_tag($movie->image, $movie->title, 200);
+        $html .= "</a>";
+        return $html;
+    }
+
 	private function build_rows($movies)
 	{
 		// Put results into a HTML-table
@@ -673,5 +681,31 @@ EOD;
 
         return $movies;
     }
+
+	public function get_most_popular_movie()
+	{
+        $sql = $this->find_movie_sql .
+            ' GROUP BY M.id' .
+            ' ORDER BY created ASC, id ASC' .
+            ' LIMIT 1';
+        //var_dump($sql);
+        $movies = $this->db->ExecuteSelectQueryAndFetchAll($sql);
+        if (empty($movies))
+            return null;
+        return $movies[0];
+	}
+
+	public function get_last_rented()
+	{
+        $sql = $this->find_movie_sql .
+            ' GROUP BY M.id' .
+            ' ORDER BY created DESC, id DESC' .
+            ' LIMIT 1';
+        //var_dump($sql);
+        $movies = $this->db->ExecuteSelectQueryAndFetchAll($sql);
+        if (empty($movies))
+            return null;
+        return $movies[0];
+	}
 
 }
