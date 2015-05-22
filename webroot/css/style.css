@@ -1,0 +1,74 @@
+/**
+ * General elements
+ */
+body {
+  color: #333;
+  font-family: arial, sans-serif;
+}
+
+/**
+ * Layout of the main page elements 
+ */
+#wrapper {
+  margin: 0 auto;
+  /* width: 980px; */
+  width: 70%;
+  padding: 10px;
+}
+
+/**
+ * Layout for header
+ */
+#header {
+  position: relative;
+  /* border: 1px solid black; */
+}
+
+.sitetitle {
+  position: absolute;
+  top: 6px;
+  left: 130px;
+  font-size: 48px;
+}
+
+.siteslogan {
+  position: absolute;
+  top: 65px;
+  left: 130px;
+  font-style: italic;
+  color: #666;
+}
+
+#moviesearch {
+	/* border: 1px solid red; */
+	float: right;
+}
+
+/**
+ * Layout for main
+ */
+#main {
+  min-height: 20em;
+}
+
+/**
+ * Layout for footer
+ */
+#footer {
+  margin-top: 40px;
+  border-top: 1px solid #ccc;
+  padding-top: 15px;
+}
+
+.sitefooter {
+  color: #666;
+}
+
+/**
+ * Navigation
+ */
+.navbar {display: block;background-color:#333;font-family:Verdana;padding:0.5em;}
+.navbar a {background-color:#999;color:#fff;padding:0.2em;text-decoration:none;}
+.navbar a:hover {background-color:#666;padding:0.5em 0.2em 0.5em 0.2em}
+.navbar a.selected {background-color:#fff;padding:0.3em 0.2em 0.5em 0.2em;color:#333;}
+

@@ -1,0 +1,220 @@
+<?php
+
+class DatabaseStatement
+{
+	private $sql;
+	private $stmt;
+
+	public function __construct($sql, $stmt)
+	{
+		$this->sql = $sql;
+		$this->stmt = $stmt;
+	}
+
+	public function get_sql() { return $this->sql; }
+	public function get_stmt() { return $this->stmt; }
+
+}
+
+/**
+ * Database wrapper, provides a database API for the framework but hides details of implementation.
+ *
+ */
+class CDatabase {
+
+  /**
+   * Members
+   */
+  private $options;                   // Options used when creating the PDO object
+  private $db   = null;               // The PDO object
+  private $stmt = null;               // The latest statement used to execute a query
+  private static $numQueries = 0;     // Count all queries made
+  private static $queries = array();  // Save all queries for debugging purpose
+  private static $params = array();   // Save all parameters for debugging purpose
+
+  /**
+   * Constructor creating a PDO object connecting to a choosen database.
+   *
+   * @param array $options containing details for connecting to the database.
+   *
+   */
+  public function __construct($options) {
+    $default = array(
+      'dsn' => null,
+      'username' => null,
+      'password' => null,
+      'driver_options' => null,
+      'fetch_style' => PDO::FETCH_OBJ,
+    );
+    $this->options = array_merge($default, $options);
+
+    try {
+      $this->db = new PDO($this->options['dsn'], $this->options['username'], $this->options['password'], $this->options['driver_options']);
+    }
+    catch(Exception $e) {
+      //throw $e; // For debug purpose, shows all connection details
+      throw new PDOException('Could not connect to database, hiding connection details.'); // Hide connection details.
+    }
+
+    $this->db->SetAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, $this->options['fetch_style']); 
+
+    // Get debug information from session if any.
+    if(isset($_SESSION['CDatabase'])) {
+      self::$numQueries = $_SESSION['CDatabase']['numQueries'];
+      self::$queries    = $_SESSION['CDatabase']['queries'];
+      self::$params     = $_SESSION['CDatabase']['params'];
+      unset($_SESSION['CDatabase']);
+    }
+  }
+
+  /**
+   * Getters
+   */
+  public function GetNumQueries() { return self::$numQueries; }
+  public function GetQueries() { return self::$queries; }
+
+  /**
+   * Get a html representation of all queries made, for debugging and analysing purpose.
+   * 
+   * @return string with html.
+   */
+  public function Dump() {
+    $html  = '<p><i>You have made ' . self::$numQueries . ' database queries.</i></p><pre>';
+    foreach(self::$queries as $key => $val) {
+      $params = empty(self::$params[$key]) ? null : htmlentities(print_r(self::$params[$key], 1), null, 'UTF-8') . '<br/><br/>';
+      $html .= htmlentities($val, null, 'UTF-8') . '<br/><br/>' . "Params: $params";
+    }
+    return $html . '</pre>';
+  }
+
+  /**
+   * Save debug information in session, useful as a flashmemory when redirecting to another page.
+   * 
+   * @param string $debug enables to save some extra debug information.
+   */
+  public function SaveDebug($debug=null) {
+    if($debug) {
+      self::$queries[] = $debug;
+      self::$params[] = null;
+    }
+
+    self::$queries[] = 'Saved debuginformation to session.';
+    self::$params[] = null;
+
+    $_SESSION['CDatabase']['numQueries'] = self::$numQueries;
+    $_SESSION['CDatabase']['queries']    = self::$queries;
+    $_SESSION['CDatabase']['params']     = self::$params;
+  }
+
+	public function Prepare($query)
+	{
+		$stmt = $this->db->prepare($query);
+		return new DatabaseStatement($query, $stmt);
+	}
+
+	private function LogQuery($logQuery, $params)
+	{
+		echo "<p>Query = <br/><pre>" .  htmlentities($logQuery). "</pre>" .
+			"</p><p>Num query = " . self::$numQueries . "</p>" .
+			"<p><pre>" . htmlentities(print_r($params, 1)) . "</pre></p>";
+	}
+
+    // Make the query
+	public function ExecutePrepared($ds, $fetchResult, $params = array(),
+		$debug = false, $fetchStyle = null)
+	{
+		$stmt = $ds->get_stmt();
+		$query = $ds->get_sql();
+		$this->stmt = $stmt;
+		$res = $stmt->execute($params);
+		if ($fetchResult) {
+			if ($res)
+				$res = $stmt->fetchAll($fetchStyle);
+			$rows = count($res);
+			$query .= "\n\nResultset has $rows rows.";
+		} else {
+			if (!$res) {
+				$query .=
+					"\n\nError in executing query: " . $this->ErrorCode() .
+					" " . print_r($this->ErrorInfo(), 1);
+			}
+		}
+
+		self::$queries[] = $query; 
+		self::$params[]  = $params; 
+		self::$numQueries++;
+
+		if ($debug) {
+			$this->LogQuery($logQuery, $params);
+		}
+
+		return $res;
+	}
+
+  /**
+   * Execute a select-query with arguments and return the resultset.
+   * 
+   * @param string $query the SQL query with ?.
+   * @param array $params array which contains the argument to replace ?.
+   * @param boolean $debug defaults to false, set to true to print out the sql query before executing it.
+   * @param int $fetchStyle can be changed by sending in arguments.
+   * @return array with resultset.
+   */
+	public function ExecuteSelectQueryAndFetchAll($query, $params = array(),
+		$debug = false, $fetchStyle = null)
+	{
+		$ds = $this->Prepare($query);
+		return $this->ExecutePrepared($ds, true, $params, $debug, $fetchStyle);
+	}
+
+  /**
+   * Execute a SQL-query and ignore the resultset.
+   *
+   * @param string $query the SQL query with ?.
+   * @param array $params array which contains the argument to replace ?.
+   * @param boolean $debug defaults to false, set to true to print out the sql query before executing it.
+   * @return boolean returns TRUE on success or FALSE on failure. 
+   */
+	public function ExecuteQuery($query, $params = array(), $debug = false)
+	{
+		$ds = $this->Prepare($query);
+		return $this->ExecutePrepared($ds, false, $params, $debug, null);
+	}
+
+  /**
+   * Return last insert id, see PDO::LastInsertId().
+   *
+   * @return string representation of id of last inserted row.
+   */
+  public function LastInsertId() {
+    return $this->db->lastInsertid();
+  }
+
+  /**
+   * Return rows affected of last INSERT, UPDATE, DELETE, see PDOStatment::rowCount().
+   *
+   * @return int number of affected rows of last statement.
+   */
+  public function RowCount() {
+    return is_null($this->stmt) ? 0 : $this->stmt->rowCount();
+  }
+
+  /**
+   * Return error code of last unsuccessful statement, see PDO::errorCode().
+   *
+   * @return mixed null or the error code.
+   */
+  public function ErrorCode() {
+    return $this->stmt->errorCode();
+  }
+
+  /**
+   * Return textual representation of last error, see PDO::errorInfo().
+   *
+   * @return array with information on the error.
+   */
+  public function ErrorInfo() {
+    return $this->stmt->errorInfo();
+  }
+
+}

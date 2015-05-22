@@ -1,0 +1,27 @@
+.orderby a {
+	  text-decoration: none;
+	    color: black;
+}
+
+.dbtable {
+}
+
+.dbtable table {
+	width: 100%;
+	border-collapse: separate;
+	border-spacing: 0 4px;
+}
+
+.dbtable .rows {
+	text-align: right;
+}
+
+
+.dbtable .pages {
+	text-align: center;
+}
+
+.debug {
+	display: none;
+	color: #666;
+}

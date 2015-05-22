@@ -1,0 +1,9 @@
+.debug {
+	display: none;
+	color: #666;
+}
+
+.poster {
+	float: right;
+	clear: both;
+}
